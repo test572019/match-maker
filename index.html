@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Compatibility Matcher</title>
+<style>
+:root{--bg:#f7f6f3;--card:#fff;--tx:#1c1f26;--mu:#6a7080;--bd:#dfe1e6;--ac:#1f4e79;--ok:#2e7d4f;--wn:#b7791f;--bad:#b83b3b;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#15171c;--card:#1f2229;--tx:#eceef2;--mu:#9aa1b0;--bd:#343844;--ac:#6aa7e0;--ok:#5cc08a;--wn:#e0b04f;--bad:#e27878;color-scheme:dark}}
+*{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+.w{max-width:1000px;margin:0 auto;padding:16px}
+h1{font-size:22px;margin:0 0 4px}h2{font-size:17px;margin:18px 0 8px}h3{font-size:14px;margin:12px 0 6px;color:var(--ac)}
+.mu{color:var(--mu);font-size:13px}
+.tabs{display:flex;gap:6px;margin:12px 0;flex-wrap:wrap}
+button,select,input{font:inherit;color:var(--tx);background:var(--card);border:1px solid var(--bd);border-radius:8px;padding:7px 11px}
+button{cursor:pointer}button.p{background:var(--ac);color:#fff;border-color:var(--ac)}button.on{border-color:var(--ac);color:var(--ac);font-weight:600}button.d{color:var(--bad)}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:14px;margin-bottom:10px}
+.g{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}
+label{display:block;font-size:12px;color:var(--mu);margin-bottom:2px}
+.f input,.f select{width:100%}.f input[type=range]{padding:0}
+.row{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.pct{font-size:26px;font-weight:700}
+.bar{height:8px;background:var(--bd);border-radius:5px;overflow:hidden}.bar i{display:block;height:100%}
+.tag{display:inline-block;font-size:12px;padding:2px 8px;border-radius:10px;border:1px solid var(--bd);margin:2px}
+.ok{color:var(--ok)}.wn{color:var(--wn)}.bad{color:var(--bad)}
+.hide{display:none}.sc{overflow-x:auto}
+li{margin:3px 0}
+</style></head><body><div class="w">
+<h1>Compatibility Matcher</h1>
+<div class="mu">Add profiles, then rank every possible pair with a percentage and a reasoned explanation. Data is stored only in this browser.</div>
+<div class="tabs">
+<button id="t1" class="on" onclick="tab(1)">Profiles</button><button id="t2" onclick="tab(2)">Matches</button><button id="t3" onclick="tab(3)">Method</button>
+<span style="flex:1"></span>
+<button onclick="sample()">Load sample</button><button onclick="exp()">Export</button><button onclick="document.getElementById('imp').click()">Import</button>
+<input type="file" id="imp" class="hide" accept=".json" onchange="imp(this)">
+</div>
+
+<div id="v1">
+<div class="row"><h2 style="margin:0">Profiles (<span id="cnt">0</span>)</h2><button class="p" onclick="edit(null)">+ Add profile</button></div>
+<div id="list" style="margin-top:10px"></div>
+<div id="form" class="card hide"></div>
+</div>
+
+<div id="v2" class="hide">
+<div class="card row">
+<div><label>Show matches for</label><select id="who" onchange="renderM()"></select></div>
+<div><label>Minimum %</label><select id="min" onchange="renderM()"><option>0</option><option>50</option><option selected>60</option><option>75</option></select></div>
+<div><label><input type="checkbox" id="ign" onchange="renderM()" style="width:auto"> Ignore gender/age-range filter</label></div>
+</div>
+<div id="ml"></div><div id="det"></div>
+</div>
+
+<div id="v3" class="hide card">
+<h2 style="margin-top:0">How the score works</h2>
+<p>Each pair is scored on eight weighted dimensions (total 100). Similarity is rewarded where research shows it predicts stability (values, goals, conflict handling); balance is rewarded for traits like emotional stability and attachment security.</p>
+<div class="sc"><table style="width:100%;border-collapse:collapse">
+<tr><td><b>Core values (25)</b></td><td>Religiosity, tradition, family closeness, money habits, ambition</td></tr>
+<tr><td><b>Life goals (15)</b></td><td>Children, living arrangement with family, relocation/city</td></tr>
+<tr><td><b>Personality (15)</b></td><td>Big Five: openness, conscientiousness, agreeableness, extraversion; neuroticism penalty when both are high</td></tr>
+<tr><td><b>Conflict &amp; love style (15)</b></td><td>Conflict-handling pairing and love-language overlap</td></tr>
+<tr><td><b>Attachment (10)</b></td><td>Secure/anxious/avoidant/fearful pairing matrix</td></tr>
+<tr><td><b>Lifestyle (10)</b></td><td>Tidiness, activity, sleep rhythm, smoking</td></tr>
+<tr><td><b>Interests (5)</b></td><td>Shared interests overlap</td></tr>
+<tr><td><b>Practical fit (5)</b></td><td>Age gap, education, each person’s preferred age range</td></tr>
+</table></div>
+<p><b>Deal-breakers</b> flagged by either person cap the result at 35%. The raw score is then calibrated (stretched) so the percentage separates strong and weak pairs more clearly.</p>
+<p class="mu">This is a decision-support tool built on general relationship research, not a guarantee of outcome. Use the explanations in a human interview, and handle personal data with consent.</p>
+</div>
+</div>
+
+<script>
+const S=[
+["Basics",[["name","Full name","t"],["gender","Gender","s",["Male","Female"]],["age","Age","n"],["city","City","t"],["edu","Education","s",["High school","Diploma","Bachelor","Master","PhD"]],["seekMin","Preferred partner age (min)","n"],["seekMax","Preferred partner age (max)","n"]]],
+["Personality (1–10)",[["o","Openness to new ideas","r"],["c","Conscientiousness / organised","r"],["e","Extraversion / social energy","r"],["a","Agreeableness / warmth","r"],["n","Emotional reactivity (neuroticism)","r"]]],
+["Values (1–10)",[["rel","Religious commitment","r"],["trad","Traditional (10) vs modern (1)","r"],["fam","Family closeness","r"],["fin","Saver (10) vs spender (1)","r"],["amb","Career ambition","r"]]],
+["Lifestyle",[["tidy","Tidiness","r"],["act","Activity level","r"],["sleep","Sleep rhythm","s",["Early","Flexible","Late"]],["smoke","Smoking","s",["No","Occasionally","Yes"]]]],
+["Goals",[["kids","Wants children","s",["No","Maybe","Yes"]],["relo","Open to relocating","s",["No","Maybe","Yes"]],["inlaw","Living with family","s",["Separate home","Near family","With family"]]]],
+["Relationship style",[["att","Attachment style","s",["Secure","Anxious","Avoidant","Fearful"]],["conf","Conflict style","s",["Collaborate","Accommodate","Avoid","Compete"]],["love","Main love language","s",["Words","Time","Gifts","Service","Touch"]],["ints","Interests (comma separated)","t"]]],
+["Deal-breakers (tick any)",[["dbSmoke","Partner who smokes","k"],["dbKids","Different view on children","k"],["dbRel","Big religiosity gap (3+)","k"],["dbCity","Different city / no relocation","k"]]]];
+let P=[],cur=null;
+try{P=JSON.parse(localStorage.getItem("mm")||"[]")}catch(e){}
+function save(){try{localStorage.setItem("mm",JSON.stringify(P))}catch(e){}}
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function tab(i){[1,2,3].forEach(k=>{document.getElementById("v"+k).classList.toggle("hide",k!=i);document.getElementById("t"+k).classList.toggle("on",k==i)});if(i==2)initM()}
+function renderL(){document.getElementById("cnt").textContent=P.length;
+document.getElementById("list").innerHTML=P.map((p,i)=>`<div class="card row"><div><b>${esc(p.name)}</b> <span class="mu">${esc(p.gender)}, ${esc(p.age)} · ${esc(p.city)}</span></div><div><button onclick="edit(${i})">Edit</button> <button class="d" onclick="del(${i})">Delete</button></div></div>`).join("")||'<div class="mu">No profiles yet.</div>'}
+function del(i){if(confirm("Delete "+P[i].name+"?")){P.splice(i,1);save();renderL()}}
+function edit(i){cur=i;const p=i==null?{}:P[i];const f=document.getElementById("form");f.classList.remove("hide");
+f.innerHTML=S.map(([g,fs])=>`<h3>${g}</h3><div class="g">`+fs.map(([k,l,t,o])=>{const v=p[k];
+if(t=="t"||t=="n")return`<div class="f"><label>${l}</label><input id="f_${k}" type="${t=="n"?"number":"text"}" value="${esc(v)}"></div>`;
+if(t=="r")return`<div class="f"><label>${l}: <span id="o_${k}">${v||5}</span></label><input id="f_${k}" type="range" min="1" max="10" value="${v||5}" oninput="o_${k}.textContent=this.value"></div>`;
+if(t=="s")return`<div class="f"><label>${l}</label><select id="f_${k}">${o.map(x=>`<option${x==v?" selected":""}>${x}</option>`).join("")}</select></div>`;
+return`<div class="f"><label><input id="f_${k}" type="checkbox" style="width:auto"${v?" checked":""}> ${l}</label></div>`}).join("")+"</div>").join("")+
+`<div style="margin-top:14px"><button class="p" onclick="saveP()">Save profile</button> <button onclick="form.classList.add('hide')">Cancel</button></div>`;f.scrollIntoView()}
+function saveP(){const p={};S.forEach(([g,fs])=>fs.forEach(([k,l,t])=>{const el=document.getElementById("f_"+k);p[k]=t=="k"?el.checked:(t=="r"||t=="n")?(+el.value||0):el.value}));
+if(!p.name.trim()){alert("Name is required");return}if(!p.age){alert("Age is required");return}
+if(!p.seekMin)p.seekMin=18;if(!p.seekMax)p.seekMax=70;
+if(cur==null)P.push(p);else P[cur]=p;save();form.classList.add("hide");renderL()}
+function exp(){const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify(P,null,1)],{type:"application/json"}));a.download="profiles.json";a.click()}
+function imp(el){const f=el.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(Array.isArray(d)){P=P.concat(d);save();renderL()}else alert("Invalid file")}catch(e){alert("Invalid file")}};r.readAsText(f);el.value=""}
+function sample(){const b=(n,g,a,c,x)=>Object.assign({name:n,gender:g,age:a,city:c,edu:"Bachelor",seekMin:a-6,seekMax:a+8,o:6,c:7,e:5,a:7,n:4,rel:6,trad:6,fam:7,fin:6,amb:6,tidy:6,act:5,sleep:"Flexible",smoke:"No",kids:"Yes",relo:"Maybe",inlaw:"Near family",att:"Secure",conf:"Collaborate",love:"Time",ints:"travel, cooking, reading",dbSmoke:false,dbKids:true,dbRel:false,dbCity:false},x);
+P=P.concat([b("Omar","Male",31,"Alexandria",{}),b("Salma","Female",28,"Alexandria",{love:"Words",ints:"reading, travel, art"}),b("Youssef","Male",34,"Cairo",{att:"Avoidant",conf:"Avoid",rel:3,trad:3,kids:"No",smoke:"Yes",n:7,ints:"gaming, football"}),b("Nour","Female",29,"Alexandria",{att:"Anxious",conf:"Compete",n:8,rel:9,trad:9,dbRel:true,inlaw:"With family",ints:"cooking, family"})]);save();renderL()}
+const AT={"Secure|Secure":1,"Secure|Anxious":.8,"Secure|Avoidant":.7,"Secure|Fearful":.65,"Anxious|Anxious":.5,"Anxious|Avoidant":.2,"Anxious|Fearful":.35,"Avoidant|Avoidant":.45,"Avoidant|Fearful":.3,"Fearful|Fearful":.3};
+const CF={"Collaborate|Collaborate":1,"Collaborate|Accommodate":.9,"Collaborate|Avoid":.7,"Collaborate|Compete":.65,"Accommodate|Accommodate":.65,"Accommodate|Avoid":.55,"Accommodate|Compete":.45,"Avoid|Avoid":.4,"Avoid|Compete":.3,"Compete|Compete":.2};
+const pr=(m,a,b)=>m[a+"|"+b]??m[b+"|"+a]??.5;
+const sim=(a,b,m=9)=>1-Math.abs(a-b)/m;
+const ix=(arr,v)=>arr.indexOf(v);
+function score(A,B){const D=[];
+function dim(name,w,s,notes){D.push({name,w,s:Math.max(0,Math.min(1,s)),notes})}
+// values
+let ws=[["rel",2,"religious commitment"],["trad",1.5,"traditional vs modern outlook"],["fam",1,"family closeness"],["fin",1,"money habits"],["amb",.5,"career ambition"]],t=0,tw=0,N=[];
+ws.forEach(([k,w,l])=>{const s=sim(A[k],B[k]);t+=s*w;tw+=w;const d=Math.abs(A[k]-B[k]);if(d<=1)N.push(["+",`Very close on ${l}`]);else if(d>=4)N.push(["-",`Large gap on ${l} (${A[k]} vs ${B[k]})`])});
+dim("Core values",25,t/tw,N);
+// goals
+N=[];let kd=Math.abs(ix(["No","Maybe","Yes"],A.kids)-ix(["No","Maybe","Yes"],B.kids));let ks=[1,.5,0][kd];
+N.push(kd==0?["+","Aligned on having children"]:kd==2?["-","Opposite views on children: the biggest long-term risk factor"]:["~","Children: one is undecided, needs an open conversation"]);
+let id=Math.abs(ix(["Separate home","Near family","With family"],A.inlaw)-ix(["Separate home","Near family","With family"],B.inlaw));let is=[1,.6,.2][id];
+N.push(id==0?["+","Same living-arrangement expectations"]:id==2?["-","Conflicting expectations on living with family"]:["~","Slightly different living-arrangement preferences"]);
+let cs=A.city.trim().toLowerCase()==B.city.trim().toLowerCase()?1:(A.relo!="No"||B.relo!="No")?(A.relo=="Yes"||B.relo=="Yes"?.7:.5):.15;
+N.push(cs==1?["+","Same city"]:cs>=.7?["~","Different cities, but relocation is open"]:["-","Different cities and little openness to relocate"]);
+dim("Life goals",15,ks*.5+is*.25+cs*.25,N);
+// personality
+N=[];let pO=sim(A.o,B.o),pC=sim(A.c,B.c),pA=(sim(A.a,B.a)+Math.min(A.a,B.a)/10)/2,pE=.5+.5*sim(A.e,B.e);
+let nb=1-Math.max(0,(A.n+B.n-10)/10);let ps=(pO*1+pC*1.2+pA*1.2+pE*.6)/4*(.6+.4*nb);
+if(pC>=.8)N.push(["+","Similar organisation levels reduce daily friction"]);else if(pC<.5)N.push(["-","Different conscientiousness: planning and chores may clash"]);
+if(pO>=.8)N.push(["+","Similar openness to new experiences"]);
+if(A.a>=7&&B.a>=7)N.push(["+","Both warm and cooperative"]);else if(Math.min(A.a,B.a)<=4)N.push(["-","Low agreeableness in one partner may raise conflict intensity"]);
+if(A.n+B.n>=14)N.push(["-","Both emotionally reactive: stress can escalate quickly"]);else if(Math.min(A.n,B.n)<=4)N.push(["+","At least one partner is emotionally steady, which stabilises the pair"]);
+dim("Personality",15,ps,N);
+// conflict + love
+N=[];let cf=pr(CF,A.conf,B.conf),lv=A.love==B.love?1:.6;
+N.push(cf>=.8?["+",`Healthy conflict pairing (${A.conf} + ${B.conf})`]:cf<=.35?["-",`Risky conflict pairing (${A.conf} + ${B.conf}): tends to escalate or go silent`]:["~",`Workable conflict pairing (${A.conf} + ${B.conf})`]);
+N.push(lv==1?["+","Same love language: affection is easily recognised"]:["~","Different love languages: need to learn each other’s"]);
+dim("Conflict & love style",15,cf*.75+lv*.25,N);
+// attachment
+N=[];let at=pr(AT,A.att,B.att);
+N.push(at>=.8?["+",`Attachment fit is strong (${A.att} + ${B.att})`]:at<=.35?["-",`Attachment pairing ${A.att} + ${B.att} is a known pursue-withdraw pattern`]:["~",`Attachment pairing ${A.att} + ${B.att} is manageable with awareness`]);
+dim("Attachment",10,at,N);
+// lifestyle
+N=[];let sl=[[1,.7,.3],[.7,1,.7],[.3,.7,1]][ix(["Early","Flexible","Late"],A.sleep)][ix(["Early","Flexible","Late"],B.sleep)];
+let sm=[[1,.6,.2],[.6,1,.7],[.2,.7,1]][ix(["No","Occasionally","Yes"],A.smoke)][ix(["No","Occasionally","Yes"],B.smoke)];
+let ls=(sim(A.tidy,B.tidy)+sim(A.act,B.act)+sl+sm)/4;
+if(sm<=.6)N.push(["-","Different smoking habits"]);if(sim(A.tidy,B.tidy)<.6)N.push(["-","Different tidiness standards"]);if(ls>=.85)N.push(["+","Daily routines are very compatible"]);
+dim("Lifestyle",10,ls,N);
+// interests
+N=[];const ta=A.ints.toLowerCase().split(",").map(s=>s.trim()).filter(Boolean),tb=B.ints.toLowerCase().split(",").map(s=>s.trim()).filter(Boolean);
+const sh=ta.filter(x=>tb.includes(x));let is2=(ta.length&&tb.length)?Math.min(1,.2+sh.length/Math.min(ta.length,tb.length)*.8):.5;
+if(sh.length)N.push(["+","Shared interests: "+sh.join(", ")]);else if(ta.length&&tb.length)N.push(["~","No shared interests listed"]);
+dim("Interests",5,is2,N);
+// practical
+N=[];let gap=Math.abs(A.age-B.age),gs=gap<=3?1:gap<=6?.8:gap<=10?.5:.25;
+let rng=(B.age>=A.seekMin&&B.age<=A.seekMax)&&(A.age>=B.seekMin&&A.age<=B.seekMax);
+let es=sim(ix(["High school","Diploma","Bachelor","Master","PhD"],A.edu),ix(["High school","Diploma","Bachelor","Master","PhD"],B.edu),4);
+N.push(rng?["+",`Age gap ${gap} yrs, within both preferred ranges`]:["-","Outside at least one person’s preferred age range"]);
+dim("Practical fit",5,(gs*.5+es*.2)/.7*(rng?1:.4),N);
+// total
+let raw=D.reduce((a,d)=>a+d.s*d.w,0)/100,pct=Math.round(100*Math.pow(raw,1.35)),flags=[];
+if(A.dbSmoke&&B.smoke!="No"||B.dbSmoke&&A.smoke!="No")flags.push("Smoking deal-breaker");
+if((A.dbKids||B.dbKids)&&kd>0)flags.push("Children deal-breaker");
+if((A.dbRel||B.dbRel)&&Math.abs(A.rel-B.rel)>=3)flags.push("Religiosity gap deal-breaker");
+if((A.dbCity||B.dbCity)&&cs<.7)flags.push("City/relocation deal-breaker");
+if(flags.length)pct=Math.min(pct,35);
+return{pct,D,flags}}
+const verdict=p=>p>=80?["Excellent match","ok"]:p>=65?["Good match","ok"]:p>=50?["Moderate: needs work","wn"]:["Low compatibility","bad"];
+function initM(){const s=document.getElementById("who");const v=s.value;s.innerHTML='<option value="-1">All pairs</option>'+P.map((p,i)=>`<option value="${i}">${esc(p.name)}</option>`).join("");if(v&&P[v])s.value=v;renderM()}
+let pairs=[];
+function renderM(){const w=+who.value,mn=+min.value,ig=document.getElementById("ign").checked;pairs=[];
+for(let i=0;i<P.length;i++)for(let j=i+1;j<P.length;j++){if(w>=0&&i!=w&&j!=w)continue;const A=P[i],B=P[j];
+if(!ig&&A.gender==B.gender)continue;const r=score(A,B);if(r.pct>=mn)pairs.push({i,j,r})}
+pairs.sort((a,b)=>b.r.pct-a.r.pct);det.innerHTML="";
+ml.innerHTML=pairs.map((x,k)=>{const[v,c]=verdict(x.r.pct);return`<div class="card row" style="cursor:pointer" onclick="detail(${k})"><div><b>${esc(P[x.i].name)}</b> &amp; <b>${esc(P[x.j].name)}</b><div class="mu ${c}">${v}${x.r.flags.length?" · ⚠ "+x.r.flags.join(", "):""}</div></div><div class="pct ${c}">${x.r.pct}%</div></div>`}).join("")||'<div class="mu">No pairs to show. Add profiles of both genders or lower the minimum.</div>'}
+function detail(k){const x=pairs[k],A=P[x.i],B=P[x.j],[v,c]=verdict(x.r.pct);
+const ic={"+":'<span class="ok">✓</span>',"-":'<span class="bad">✗</span>',"~":'<span class="wn">•</span>'};
+const all=x.r.D.flatMap(d=>d.notes.map(n=>[...n,d.name]));
+const str=all.filter(n=>n[0]=="+"),rsk=all.filter(n=>n[0]=="-");
+det.innerHTML=`<div class="card"><div class="row"><h2 style="margin:0">${esc(A.name)} &amp; ${esc(B.name)}</h2><div class="pct ${c}">${x.r.pct}% · ${v}</div></div>
+${x.r.flags.length?`<p class="bad"><b>Deal-breakers:</b> ${x.r.flags.join("; ")}. Score capped at 35%.</p>`:""}
+<h3>Why they match (${str.length})</h3><ul>${str.map(n=>`<li>${ic["+"]} ${esc(n[1])} <span class="mu">(${n[2]})</span></li>`).join("")||"<li class='mu'>None notable</li>"}</ul>
+<h3>Why they may not (${rsk.length})</h3><ul>${rsk.map(n=>`<li>${ic["-"]} ${esc(n[1])} <span class="mu">(${n[2]})</span></li>`).join("")||"<li class='mu'>No major risks found</li>"}</ul>
+<h3>Dimension breakdown</h3>${x.r.D.map(d=>{const p=Math.round(d.s*100),col=p>=75?"var(--ok)":p>=55?"var(--wn)":"var(--bad)";return`<div style="margin:8px 0"><div class="row"><span>${d.name} <span class="mu">weight ${d.w}</span></span><b>${p}%</b></div><div class="bar"><i style="width:${p}%;background:${col}"></i></div></div>`}).join("")}
+<h3>Suggested interview topics</h3><ul>${rsk.slice(0,4).map(n=>`<li>${esc(n[1])}: discuss expectations openly before proceeding</li>`).join("")||"<li>Confirm shared plans for the first 2 years together</li>"}</ul></div>`;det.scrollIntoView({behavior:"smooth"})}
+renderL();
+</script></body></html>
